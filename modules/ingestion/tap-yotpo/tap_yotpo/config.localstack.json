@@ -1,0 +1,14 @@
+{
+  "app_key": "any",
+  "secret": "any",
+  "start_date": "2024-01-01T00:00:00Z",
+  "api_url": "http://localhost:5001/v1/emails",
+  "yotpo_token": "test-token",
+  "s3_bucket": "client-x",
+  "s3_prefix": "yotpo/emails",
+  "s3_threshold": 20000,
+  "region_name": "us-east-1",
+  "aws_access_key_id": "test",
+  "aws_secret_access_key": "test",
+  "endpoint_url": "http://localhost:4566"
+}

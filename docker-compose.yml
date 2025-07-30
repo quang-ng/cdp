@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  yotpo-mock:
+    build:
+      context: ./services/yotpo-mock
+    container_name: yotpo_mock
+    ports:
+      - "5001:5000"
+    networks:
+      - cdpnet
+
+networks:
+  cdpnet:
+    driver: bridge
