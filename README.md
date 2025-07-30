@@ -69,6 +69,7 @@ A comprehensive Customer Data Platform that enables businesses to unify, enrich,
              │ • NDJSON Files    │
              └─────────┬─────────┘
                        │
+                       │
              ┌─────────▼─────────┐
              │     PySpark       │
              │  Transformation   │
@@ -89,38 +90,47 @@ A comprehensive Customer Data Platform that enables businesses to unify, enrich,
              │ • Enriched Data   │
              └─────────┬─────────┘
                        │
-             ┌─────────▼─────────┐
-             │    Database       │
-             │   (PostgreSQL)    │
-             │                   │
-             │ • Customer Tables │
-             │ • Event Tables    │
-             │ • Product Tables  │
-             └─────────┬─────────┘
                        │
-   ┌───────────────────┼───────────────────┐
-   │                   │                   │
-┌──▼──────────┐ ┌──────▼───────┐ ┌─────────▼─────────┐
-│Segmentation │ │  Analytics   │ │    Reporting      │
-│             │ │              │ │                   │
-│• Behavioral │ │ • Customer   │ │ • Dashboards      │
-│  Segments   │ │   Insights   │ │ • KPIs            │
-│• Demographic│ │ • Cohort     │ │ • Business        │
-│  Groups     │ │   Analysis   │ │   Intelligence    │
-│• ML Models  │ │ • AI-Powered │ │ • Real-time       │
-│             │ │   Insights   │ │   Metrics         │
-└─────────┬───┘ └──────────────┘ └───────────────────┘
-          │
-          │
-┌─────────▼─────────┐
-│    Activation     │
-│                   │
-│ • Email Service   │
-│ • Facebook Ads    │
-│ • Google Ads      │
-│ • Other Marketing │
-│   Platforms       │
-└───────────────────┘
+             ┌─────────│────────┐
+             │                  │
+   ┌─────────▼──────┐    ┌──────▼─────────┐
+   │  Database      │    │ Elasticsearch  │
+   │ (PostgreSQL)   │    │ (Search &      │
+   │                │    │  Analytics)    │
+   │ • Customer     │    │                │
+   │   Tables       │    │                │
+   │ • Event Tables │    │                │
+   │ • Product      │    │                │
+   │   Tables       │    │                │
+   └────────────────┘    └──────┬─────────┘
+                                │
+                                │
+                                │
+   ┌────────────────────────────▼──────────┐
+   │ Segmentation   Analytics   Reporting  │
+   │   (All point to Elasticsearch)        │
+   │ • Behavioral Segments                 │
+   │ • Demographic Groups                  │
+   │ • ML Models                           │
+   │ • Customer Insights                   │
+   │ • Cohort Analysis                     │
+   │ • AI-Powered Insights                 │
+   │ • Dashboards                          │
+   │ • KPIs                                │
+   │ • Business Intelligence               │
+   │ • Real-time Metrics                   │
+   └─────────┬─────────────────────────────┘
+             │
+             ▼
+   ┌───────────────────────┐
+   │    Activation         │
+   │                       │
+   │ • Email Service       │
+   │ • Facebook Ads        │
+   │ • Google Ads          │
+   │ • Other Marketing     │
+   │   Platforms           │
+   └───────────────────────┘
 ```
 
 ## Deep Dive: System Components
@@ -344,183 +354,7 @@ Provider Webhook → API Gateway → Lambda → SQS → Batch Processor → S3 R
 - **Consistent Format** - Same NDJSON.gzip format as batch extractions
 - **Reliable** - SQS ensures no webhook events are lost
 
-### Schedulers (Batch Data Extraction)
 
-The Schedulers component orchestrates regular batch data extraction from various data sources using Singer.io taps and AWS infrastructure.
-
-#### Purpose
-- **Scheduled Data Extraction** - Automated data pulls from CRM, e-commerce, and marketing platforms
-- **Batch Processing** - Large-scale data ingestion in scheduled intervals
-- **Orchestration** - Coordinated execution across multiple customers and providers
-- **Reliability** - Robust error handling and retry mechanisms
-
-#### Architecture Overview
-
-**Core Components:**
-- **BuildKite** - CI/CD pipeline orchestration and scheduling
-- **ECS Fargate** - Serverless container execution platform
-- **Singer.io Taps** - Standardized data extraction tools
-- **Docker Containers** - Packaged extraction environments
-- **S3 Raw** - Destination for extracted data
-
-#### How Singer.io Taps Work
-
-**Singer Specification:**
-- **Open Source Standard** - Community-driven data extraction framework
-- **JSON-based Output** - Structured data format with schema definitions
-- **Incremental Sync** - State-based tracking for efficient updates
-- **Stream Processing** - Record-by-record data extraction
-
-**Singer Components:**
-1. **Taps** - Extract data from source systems (Salesforce, Shopify, etc.)
-2. **Targets** - Load data into destination systems (S3, databases)
-3. **State Files** - Track extraction progress for incremental syncs
-4. **Schema Discovery** - Automatic detection of source data structures
-
-**Singer Data Flow:**
-```
-Source API → Singer Tap → JSON Records → Schema Validation → S3 Target
-```
-
-**Example Singer Output:**
-```json
-{"type": "SCHEMA", "stream": "customers", "schema": {...}}
-{"type": "RECORD", "stream": "customers", "record": {"id": 123, "name": "John"}}
-{"type": "STATE", "value": {"bookmarks": {"customers": {"last_updated": "2025-01-15"}}}}
-```
-
-#### AWS Services Integration
-
-**BuildKite (Orchestration):**
-- **Pipeline Definition** - YAML-based job configuration
-- **Cron Scheduling** - Time-based trigger execution
-- **Agent Management** - Distributed build agent coordination
-- **Retry Logic** - Failed job re-execution with exponential backoff
-- **Notifications** - Slack/email alerts for job status
-
-**ECS Fargate (Container Execution):**
-- **Serverless Containers** - No EC2 instance management required
-- **Auto Scaling** - Dynamic task scaling based on workload
-- **Resource Allocation** - Per-task CPU and memory configuration
-- **Networking** - VPC integration with security group controls
-- **Service Discovery** - Internal service communication
-
-**Docker Containerization:**
-- **Singer Tap Images** - Pre-built containers for each data source
-- **Environment Isolation** - Separate runtime environments per customer
-- **Version Control** - Tagged images for rollback capabilities
-- **Secret Management** - AWS Secrets Manager integration
-
-#### Execution Workflow
-
-**Step-by-Step Process:**
-
-1. **BuildKite Trigger**
-   - Cron schedule activates (e.g., daily at 2 AM UTC)
-   - Pipeline reads customer/provider configuration
-   - Generates ECS task definitions for each extraction job
-
-2. **ECS Task Launch**
-   - Fargate provisions container resources
-   - Downloads Singer tap Docker image
-   - Injects customer credentials from AWS Secrets Manager
-   - Starts container with tap-specific configuration
-
-3. **Singer Tap Execution**
-   - Tap connects to source API (Salesforce, Shopify, etc.)
-   - Reads previous state file from S3 for incremental sync
-   - Extracts data records with schema validation
-   - Batches records into 20k chunks for S3 upload
-
-4. **Data Upload**
-   - Records formatted as NDJSON.gzip
-   - Uploaded to S3 with partitioned folder structure
-   - State file updated with latest extraction timestamp
-   - Task completion logged to CloudWatch
-
-**Execution Flow Diagram:**
-```
-BuildKite Cron → ECS Task Definition → Fargate Container → Singer Tap → S3 Raw
-     (2 AM)         (Task Config)      (Docker Run)    (Extract)   (NDJSON)
-```
-
-#### Scheduling Configuration
-
-**Frequency Patterns:**
-- **Daily Extraction** - Most common for CRM and e-commerce data
-- **Hourly Sync** - High-frequency sources like advertising platforms
-- **Weekly Jobs** - Large datasets or rate-limited APIs
-- **Custom Schedules** - Customer-specific requirements
-
-**Example BuildKite Pipeline:**
-```yaml
-steps:
-  - label: "Salesforce Extraction - Acme Corp"
-    command: |
-      aws ecs run-task \
-        --cluster cdp-extraction \
-        --task-definition salesforce-tap:latest \
-        --launch-type FARGATE \
-        --network-configuration "awsvpcConfiguration={subnets=[subnet-abc123],securityGroups=[sg-def456]}"
-    env:
-      CUSTOMER_ID: acme_corp
-      PROVIDER: salesforce
-      S3_BUCKET: cdp-raw-bucket
-    retry:
-      automatic:
-        - exit_status: "*"
-          limit: 3
-```
-
-#### Performance & Scaling
-
-**Resource Management:**
-- **CPU Allocation** - 0.25-4 vCPU per task based on data volume
-- **Memory Limits** - 512MB-30GB depending on extraction complexity
-- **Concurrent Tasks** - Up to 1000 tasks per region
-- **Network Bandwidth** - 10 Gbps max per task
-
-**Optimization Strategies:**
-- **Parallel Extraction** - Multiple customers processed simultaneously
-- **Incremental Loading** - Only extract changed records since last run
-- **Compression** - GZIP reduces storage and transfer costs by 70-80%
-- **Batch Sizing** - 20k records optimal for memory usage and S3 performance
-
-#### Error Handling & Monitoring
-
-**Error Types & Responses:**
-- **API Rate Limits** - Exponential backoff with jitter (30s, 60s, 120s)
-- **Authentication Failures** - Alert engineering team, pause extraction
-- **Network Timeouts** - Retry with increased timeout (up to 30 minutes)
-- **Data Validation Errors** - Send invalid records to Dead Letter Queue
-
-**Monitoring & Alerting:**
-- **CloudWatch Metrics** - Task success/failure rates, duration, resource usage
-- **Custom Dashboards** - Real-time extraction status across all customers
-- **Slack Notifications** - Failed jobs, high error rates, SLA breaches
-- **Daily Reports** - Extraction summary with record counts and timing
-
-**Recovery Procedures:**
-- **Failed Tasks** - Automatic retry up to 3 attempts
-- **Partial Failures** - Resume from last successful state
-- **Data Corruption** - Rollback to previous state, re-extract affected period
-- **Infrastructure Issues** - Failover to secondary AWS region
-
-#### Benefits of This Architecture
-
-**Operational Advantages:**
-- **Serverless** - No infrastructure management overhead
-- **Cost Effective** - Pay only for actual extraction time
-- **Scalable** - Handle hundreds of customers and data sources
-- **Reliable** - Built-in retry and error handling mechanisms
-- **Standardized** - Singer specification ensures consistent data format
-
-**Developer Benefits:**
-- **Easy Onboarding** - New data sources follow Singer patterns
-- **Version Control** - Docker images provide consistent environments
-- **Debugging** - Detailed logs in CloudWatch for troubleshooting
-- **Testing** - Local Docker execution for development
-- **Monitoring** - Comprehensive metrics and alerting
 
 ### PySpark Transformation (Data Processing Engine)
 
@@ -571,29 +405,6 @@ Since T-1   Timestamp     Data Only         Tables          Refresh
 4. **Merge Strategy** - Upsert new/changed records into existing tables
 5. **State Update** - Update state file with current run timestamp
 
-**Example Incremental Run:**
-```python
-# Read state from previous run
-last_run = read_state("s3://cdp-state/acme_corp/last_transform_run.json")
-# last_run = "2025-01-14T23:00:00Z"
-
-# Find new files since last run
-new_files = spark.read.parquet("s3://cdp-raw/acme_corp/") \
-    .filter(col("file_timestamp") > last_run) \
-    .select("file_path").collect()
-
-# Process only new data
-for file in new_files:
-    df = spark.read.json(file.file_path)
-    clean_df = transform_data(df)
-    
-    # Merge into existing table
-    existing_table = spark.read.parquet("s3://cdp-processed/acme_corp/customers/")
-    merged_df = merge_upsert(existing_table, clean_df, key="customer_id")
-    
-    # Write back to processed zone
-    merged_df.write.mode("overwrite").parquet("s3://cdp-processed/acme_corp/customers/")
-```
 
 **Benefits:**
 - **Speed** - 10-100x faster than full reprocessing
@@ -633,35 +444,6 @@ History    Data         Processing         Tables          Refresh
 4. **Complete Rebuild** - Recreate all tables from scratch
 5. **Atomic Replacement** - Replace production tables atomically
 
-**Example Historic Run:**
-```python
-# Read ALL historical data
-all_data = spark.read.json("s3://cdp-raw/*/*/*/*/")  # All customers, all dates
-
-# Process in parallel by customer
-customers = all_data.select("customer_id").distinct().collect()
-
-def process_customer(customer_id):
-    # Read all data for this customer
-    customer_data = all_data.filter(col("customer_id") == customer_id)
-    
-    # Apply all transformations
-    clean_data = transform_data(customer_data)
-    enrich_data = enrich_customer_profiles(clean_data)
-    final_data = apply_business_rules(enrich_data)
-    
-    # Write to new table location
-    final_data.write.mode("overwrite") \
-        .parquet(f"s3://cdp-processed-new/{customer_id}/customers/")
-
-# Process all customers in parallel
-from concurrent.futures import ThreadPoolExecutor
-with ThreadPoolExecutor(max_workers=10) as executor:
-    executor.map(process_customer, [c.customer_id for c in customers])
-
-# Atomically replace production tables
-replace_production_tables("s3://cdp-processed-new/", "s3://cdp-processed/")
-```
 
 **Benefits:**
 - **Completeness** - Ensures all historical data is properly processed
@@ -681,128 +463,32 @@ replace_production_tables("s3://cdp-processed-new/", "s3://cdp-processed/")
 **Data Processing Steps:**
 
 1. **Data Ingestion**
-   ```python
-   # Read raw NDJSON data from S3
-   raw_df = spark.read.option("multiline", "false") \
-       .json("s3://cdp-raw/acme_corp/salesforce/2025/01/15/")
-   ```
-
 2. **Schema Validation**
-   ```python
-   # Validate against expected schema
-   expected_schema = load_schema("salesforce_customer_v2.json")
-   validated_df = validate_schema(raw_df, expected_schema)
-   ```
-
 3. **Data Cleaning**
-   ```python
-   # Remove duplicates, fix data types, handle nulls
-   clean_df = raw_df \
-       .dropDuplicates(["customer_id", "email"]) \
-       .withColumn("created_date", to_timestamp("created_date")) \
-       .fillna({"country": "Unknown", "revenue": 0})
-   ```
-
 4. **Data Normalization**
-   ```python
-   # Standardize formats across providers
-   normalized_df = clean_df \
-       .withColumn("email", lower(col("email"))) \
-       .withColumn("phone", regexp_replace(col("phone"), "[^0-9]", "")) \
-       .withColumn("country", map_country_codes(col("country")))
-   ```
-
 5. **Data Enrichment**
-   ```python
-   # Add derived fields and external data
-   enriched_df = normalized_df \
-       .withColumn("customer_segment", calculate_segment(col("revenue"))) \
-       .withColumn("geo_location", geocode_address(col("address"))) \
-       .join(external_company_data, "domain", "left")
-   ```
-
 6. **Quality Validation**
-   ```python
-   # Apply data quality rules
-   quality_checks = [
-       ("email_format", col("email").rlike(r"^[^@]+@[^@]+\.[^@]+$")),
-       ("revenue_positive", col("revenue") >= 0),
-       ("required_fields", col("customer_id").isNotNull())
-   ]
-   
-   validated_df = apply_quality_checks(enriched_df, quality_checks)
-   ```
+7. **Output Partitioning**: parquet files
 
-7. **Output Partitioning**
-   ```python
-   # Partition for optimal query performance
-   final_df.write \
-       .partitionBy("year", "month", "customer_segment") \
-       .mode("overwrite") \
-       .parquet("s3://cdp-processed/acme_corp/customers/")
-   ```
 
-#### Execution Environment
+#### Infrastructure Setup for PySpark on ECS Fargate
 
-**AWS Glue (Serverless):**
-- **Auto-scaling** - Automatically provisions compute resources
-- **Pay-per-use** - Only pay for actual processing time
-- **Managed Service** - No cluster management overhead
-- **Integration** - Native S3 and Glue Catalog integration
+Running PySpark on ECS Fargate provides greater control, cost efficiency, and seamless integration with the existing CDP infrastructure.
 
-**Amazon EMR (Managed Clusters):**
-- **High Performance** - Optimized Spark clusters for large workloads
-- **Customization** - Full control over cluster configuration
-- **Cost Optimization** - Spot instances for batch processing
-- **Scaling** - Dynamic cluster resizing based on workload
+##### Why ECS Fargate for PySpark?
 
-**Resource Allocation:**
+**Advantages:**
+- **Consistency** - Same infrastructure as data extraction pipeline
+- **Cost Control** - Pay only for actual compute time, no cluster overhead
+- **Flexibility** - Custom Spark configurations and Python dependencies
+- **Integration** - Native integration with existing ECS services and monitoring
+- **Scalability** - Independent scaling per transformation job
 
-**Incremental Mode:**
-- **Cluster Size** - 2-5 nodes (small cluster)
-- **Instance Types** - m5.xlarge to m5.2xlarge
-- **Memory** - 8-16 GB per executor
-- **Runtime** - 30 minutes to 2 hours
-- **Cost** - $10-50 per run
-
-**Historic Mode:**
-- **Cluster Size** - 20-200 nodes (large cluster)
-- **Instance Types** - r5.4xlarge to r5.8xlarge (memory-optimized)
-- **Memory** - 32-64 GB per executor
-- **Runtime** - 4-24 hours
-- **Cost** - $500-5000 per run
-
-#### Data Quality Framework
-
-**Quality Dimensions:**
-- **Completeness** - Required fields are populated
-- **Accuracy** - Data values are correct and valid
-- **Consistency** - Data formats are standardized
-- **Timeliness** - Data is processed within SLA
-- **Uniqueness** - No duplicate records exist
-
-**Quality Rules Engine:**
-```python
-quality_rules = {
-    "customers": [
-        {"rule": "email_unique", "check": "count(email) = count(distinct email)"},
-        {"rule": "revenue_range", "check": "revenue between 0 and 1000000"},
-        {"rule": "required_fields", "check": "customer_id is not null"},
-        {"rule": "email_format", "check": "email matches '^[^@]+@[^@]+\\.[^@]+$'"}
-    ],
-    "orders": [
-        {"rule": "order_total_positive", "check": "order_total > 0"},
-        {"rule": "order_date_valid", "check": "order_date >= '2020-01-01'"},
-        {"rule": "customer_exists", "check": "customer_id in (select customer_id from customers)"}
-    ]
-}
+**Architecture Overview:**
 ```
-
-**Quality Reporting:**
-- **Quality Score** - Percentage of records passing all quality checks
-- **Rule Violations** - Detailed breakdown of failed quality rules
-- **Trend Analysis** - Quality metrics over time
-- **Alerting** - Notifications when quality scores drop below threshold
+BuildKite Scheduler → ECS Task Definition → Fargate Container → PySpark Job → S3 Processed
+      (Cron)            (Job Config)        (Spark Runtime)    (Transform)   (Output)
+```
 
 #### Performance Optimization
 
@@ -831,40 +517,73 @@ s3://cdp-processed/acme_corp/customers/
 - **Checkpointing** - Persist intermediate results for complex transformations
 - **Dynamic Allocation** - Adjust executor count based on workload
 
-#### Monitoring & Observability
 
-**Metrics Tracking:**
-- **Processing Time** - Duration of each transformation job
-- **Data Volume** - Records processed per run
-- **Error Rates** - Failed records and transformation errors
-- **Resource Utilization** - CPU, memory, and network usage
+### S3 Processed → Database: Data Loading Flow
 
-**Alerting Rules:**
-- **Job Failures** - Alert on transformation job failures
-- **SLA Breaches** - Alert when processing exceeds time limits
-- **Quality Degradation** - Alert when data quality scores drop
-- **Resource Limits** - Alert on high memory or CPU usage
+The following diagram illustrates how curated data moves from S3 Processed to the Database in both Incremental and Historic modes:
 
-**Logging Strategy:**
-- **Structured Logs** - JSON-formatted logs for easy parsing
-- **Correlation IDs** - Track records through entire pipeline
-- **Error Context** - Detailed error information for debugging
-- **Performance Metrics** - Execution times and resource usage
+```
+           Incremental Mode (Default)                  Historic Mode (Full Reload)
+┌───────────────────────────────┐                ┌───────────────────────────────┐
+│   S3 Processed (Curated)      │                │   S3 Processed (Curated)      │
+│   (New/Changed Partitions)    │                │   (All Partitions)            │
+└──────────────┬────────────────┘                └──────────────┬────────────────┘
+               │                                             │
+               │                                             │
+      Delta Detection & State Tracking               Full Scan of All Data
+               │                                             │
+               ▼                                             ▼
+        Data Extraction                              Data Extraction
+               │                                             │
+               ▼                                             ▼
+   Transformation/Mapping (if needed)           Transformation/Mapping (if needed)
+               │                                             │
+               ▼                                             ▼
+        Upsert/Merge into DB                        Truncate & Bulk Load
+               │                                             │
+               ▼                                             ▼
+   Update State for Next Run                        Integrity Checks & State Reset
+```
 
-#### Benefits of This Architecture
+**Incremental Mode:**
+- Detects and loads only new or changed data since the last run.
+- Uses upsert/merge logic to keep database in sync with minimal lag.
+- Fast, cost-efficient, and suitable for daily operations.
 
-**Technical Advantages:**
-- **Flexibility** - Support both incremental and full reprocessing
-- **Scalability** - Handle terabytes of data with auto-scaling
-- **Reliability** - Built-in retry logic and error handling
-- **Performance** - Optimized for both speed and cost efficiency
-
-**Business Benefits:**
-- **Fresh Data** - Near real-time data availability for analytics
-- **Data Quality** - Automated quality checks and validation
-- **Cost Control** - Efficient incremental processing reduces costs
-- **Compliance** - Audit trails and data lineage tracking
+**Historic Mode:**
+- Loads all curated data, typically after schema changes or for backfills.
+- Truncates and reloads entire tables for full consistency.
+- Resource-intensive, used for migrations or recovery.
 
 
+### Activation Pipeline: Simple Data Flow
 
+1. **Segment Selection**
+   - Query the database or data warehouse for users matching your criteria (e.g., bought > $50).
+   - Always export the results to S3 as Parquet files (columnar format), regardless of segment size.
 
+2. **Audience Export**
+   - The list of users (emails, IDs) is always written to S3 as Parquet files.
+   - For large segments, split into multiple files for efficient processing.
+
+3. **Channel Integration**
+   - The activation service reads the audience from S3 or receives it via API.
+   - Upload the list to your email or ad platform using their bulk import features.
+
+4. **Personalization**
+   - Join user details (like name) in batch before export, so all personalization data is included in the Parquet file. Avoid per-user database queries (no N+1 problem).
+   - Use templates stored in your email/ad platform.
+
+5. **Send & Monitor**
+   - The platform sends the campaign to users.
+   - Track delivery, opens, clicks, and conversions.
+   - Export these results back to your CDP for analytics.
+
+6. **Feedback Loop**
+   - Store campaign results in your analytics tables or data warehouse.
+   - Use this data for future targeting and reporting.
+
+**For all segments:**
+- Always use S3 for storage and process in batches if needed.
+- Store all segment and audience data in Parquet files for efficient analytics and processing.
+- Use the bulk import and reporting features of your marketing platforms.
