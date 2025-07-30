@@ -91,12 +91,22 @@ A comprehensive Customer Data Platform that enables businesses to unify, enrich,
              └─────────┬─────────┘
                        │
                        │
-             ┌─────────│────────┐
-             │                  │
-   ┌─────────▼──────┐    ┌──────▼─────────┐
+                       │
+                       │                  
+   ┌───────────────────▼─────┐
+   │ Customer 360 Unification│
+   │        (PySpark)        │
+   │  • Merge provider data  │
+   │  • Identity resolution  │
+   │  • Unified profile tbl  │
+   └─────────┬─────────────┬─┘
+             │             │
+   ┌─────────▼──────┐    ┌─▼──────────────┐
    │  Database      │    │ Elasticsearch  │
    │ (PostgreSQL)   │    │ (Search &      │
    │                │    │  Analytics)    │
+   │ • Unified      │    │                │
+   │   Profiles     │    │                │
    │ • Customer     │    │                │
    │   Tables       │    │                │
    │ • Event Tables │    │                │
@@ -531,6 +541,38 @@ s3://cdp-processed/acme_corp/customers/
 - **Dynamic Allocation** - Adjust executor count based on workload
 
 
+### Customer 360 Unification (PySpark)
+
+The Customer 360 Unification job merges all provider-specific processed data into a single, unified customer profile table. It resolves identities, deduplicates, and creates a golden record for each customer.
+
+**How it works:**
+1. Read all provider customer data from S3 Processed (Parquet).
+2. Align schemas to a common customer model.
+3. Resolve identities (by email, phone, or fuzzy match).
+4. Select the best/latest record per customer.
+5. Write unified profiles to S3 and upsert into the database.
+
+**Example PySpark:**
+```python
+df1 = spark.read.parquet('s3://.../salesforce/customers/')
+df2 = spark.read.parquet('s3://.../shopify/customers/')
+df1 = df1.selectExpr('id as external_id', 'email', 'name', 'phone', 'updated_at')
+df2 = df2.selectExpr('customer_id as external_id', 'email', 'name', 'phone', 'updated_at')
+df_all = df1.unionByName(df2)
+from pyspark.sql import functions as F, Window
+window = Window.partitionBy('email').orderBy(F.desc('updated_at'))
+df_unified = df_all.withColumn('row_num', F.row_number().over(window)).filter('row_num = 1')
+df_unified.write.mode('overwrite').parquet('s3://.../unified_profiles/')
+```
+
+**Best practices:**
+- Use robust/fuzzy matching for identity resolution
+- Track match confidence and ambiguous matches
+- Partition output for analytics
+
+**Tools:** PySpark, splink, recordlinkage, AWS Glue/EMR, Delta Lake/Iceberg
+
+
 ### S3 Processed → Database: Data Loading Flow
 
 The following diagram illustrates how curated data moves from S3 Processed to the Database in both Incremental and Historic modes:
@@ -600,3 +642,14 @@ The following diagram illustrates how curated data moves from S3 Processed to th
 - Always use S3 for storage and process in batches if needed.
 - Store all segment and audience data in Parquet files for efficient analytics and processing.
 - Use the bulk import and reporting features of your marketing platforms.
+
+
+The Customer Data Platform (CDP) is a unified system that enables businesses to collect, process, enrich, and activate customer data from multiple sources. It features:
+- Centralized data ingestion and storage (S3 Raw)
+- Automated data extraction, validation, and enrichment pipelines
+- Scalable, secure, and compliant architecture leveraging AWS (ECS Fargate, Lambda, S3, EMR/Glue)
+- Real-time and batch data processing for analytics and activation
+- Support for predictive analytics, segmentation, and marketing activation
+
+This document provides a detailed system design, including data flows, error handling, and performance strategies.
+
