@@ -102,24 +102,30 @@ A comprehensive Customer Data Platform that enables businesses to unify, enrich,
    │ • Event Tables │    │                │
    │ • Product      │    │                │
    │   Tables       │    │                │
-   └────────────────┘    └──────┬─────────┘
-                                │
-                                │
-                                │
-   ┌────────────────────────────▼──────────┐
-   │ Segmentation   Analytics   Reporting  │
-   │   (All point to Elasticsearch)        │
-   │ • Behavioral Segments                 │
-   │ • Demographic Groups                  │
-   │ • ML Models                           │
-   │ • Customer Insights                   │
-   │ • Cohort Analysis                     │
-   │ • AI-Powered Insights                 │
-   │ • Dashboards                          │
-   │ • KPIs                                │
-   │ • Business Intelligence               │
-   │ • Real-time Metrics                   │
-   └─────────┬─────────────────────────────┘
+   └──────┬─────────┘    └────────────────┘
+          │                        │
+          │                        │
+   ┌──────▼──────┐                 │
+   │    API      │                 │
+   │ (Enrichment │                 │
+   │   & Query)  │                 │
+   └─────────────┘                 │
+                                   │
+                                   │
+   ┌───────────────────────────────▼──────────┐
+   │ Segmentation   Analytics   Reporting     │
+   │                                          │            
+   │ • Behavioral Segments                    │
+   │ • Demographic Groups                     │
+   │ • ML Models                              │
+   │ • Customer Insights                      │
+   │ • Cohort Analysis                        │
+   │ • AI-Powered Insights                    │
+   │ • Dashboards                             │
+   │ • KPIs                                   │
+   │ • Business Intelligence                  │
+   │ • Real-time Metrics                      │
+   └─────────┬────────────────────────────────┘
              │
              ▼
    ┌───────────────────────┐
@@ -153,16 +159,23 @@ s3://cdp-raw-bucket/
 │   │   │   ├── month=01/
 │   │   │   │   ├── day=15/
 │   │   │   │   │   ├── customer_batch_001.ndjson.gzip (20k records)
+│   │   │   │   │   ├── order_20250115T010000.ndjson.gzip (5k records)
+│   │   │   │   │   ├── product_20250115T010000.ndjson.gzip (500 records)
 │   │   │   │   │   ├── customer_batch_002.ndjson.gzip (20k records)
+│   │   │   │   │   ├── order_20250115T020000.ndjson.gzip (4.5k records)
+│   │   │   │   │   ├── product_20250115T020000.ndjson.gzip (480 records)
 │   │   │   │   │   └── customer_batch_003.ndjson.gzip (15k records)
 │   │   │   │   └── day=16/
 │   │   │   │       ├── customer_batch_001.ndjson.gzip
-│   │   │   │       └── customer_batch_002.ndjson.gzip
+│   │   │   │       ├── order_20250116T010000.ndjson.gzip
+│   │   │   │       └── product_20250116T010000.ndjson.gzip
 │   ├── shopify/
 │   │   ├── year=2025/
 │   │   │   ├── month=01/
 │   │   │   │   ├── day=15/
 │   │   │   │   │   ├── customer_batch_001.ndjson.gzip
+│   │   │   │   │   ├── order_20250115T030000.ndjson.gzip
+│   │   │   │   │   ├── product_20250115T030000.ndjson.gzip
 │   │   │   │   │   └── customer_batch_002.ndjson.gzip
 ```
 
